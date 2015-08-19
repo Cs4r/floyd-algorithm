@@ -11,19 +11,16 @@ static const int BUFFER_SIZE = 100;
 static const char* VERTEX_SEPARATOR = " \t";
 
 AdjacencyMatrix::AdjacencyMatrix(const std::string& filename) {
-	std::ifstream infile(filename.c_str());
-
-	if (!infile) {
-		throw new std::runtime_error(
-				"Unable to read the file with definition of vertices");
+	try {
+		std::ifstream infile(filename.c_str());
+		if (infile) {
+			initializeAdjacencyMatrix(infile);
+			return;
+		}
+	} catch (std::exception& e) {
 	}
-
-	initializeAdjacencyMatrix(infile);
-}
-
-AdjacencyMatrix::AdjacencyMatrix(const AdjacencyMatrix& other) {
-	this->numberOfVertices = other.numberOfVertices;
-	this->adjacencyMatrix = other.adjacencyMatrix;
+	throw new std::runtime_error(
+			"Unable to read the file with definition of vertices");
 }
 
 void AdjacencyMatrix::initializeAdjacencyMatrix(std::ifstream& infile) {
@@ -66,6 +63,11 @@ void AdjacencyMatrix::readVerticesFromFile(std::ifstream& infile) {
 		adjacencyMatrix[vertexA * numberOfVertices + vertexB] = edgeLength;
 	}
 
+}
+
+AdjacencyMatrix::AdjacencyMatrix(const AdjacencyMatrix& other) {
+	this->numberOfVertices = other.numberOfVertices;
+	this->adjacencyMatrix = other.adjacencyMatrix;
 }
 
 AdjacencyMatrix::~AdjacencyMatrix() {
