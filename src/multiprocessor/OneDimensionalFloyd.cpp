@@ -7,7 +7,7 @@
 using namespace std;
 
 /**
- * Parallel implementation of Floyd-Warshall algorithm using Open MPI.
+ * Parallel implementation of Floyd-Warshall algorithm using Open MP.
  *
  * Computation of matrix with shortest paths between all pairs of vertices is done distributing
  * the rows of the adjacency matrix between threads. That's say it is based on a one-dimensional,
