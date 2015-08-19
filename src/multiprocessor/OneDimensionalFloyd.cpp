@@ -21,7 +21,8 @@ void parallelFloyd(AdjacencyMatrix& adyacencyMatrix);
 
 int main(int argc, char *argv[]) {
 	if (argc != 3) {
-		cerr << "Wrong execution!" << endl << argv[0]
+		cerr << "Wrong execution!" << endl;
+		cout << "Syntax:\t" << argv[0]
 				<< " <adjacency_matrix_file> <number_of_threads>" << endl;
 		exit(EXIT_FAILURE);
 	}
