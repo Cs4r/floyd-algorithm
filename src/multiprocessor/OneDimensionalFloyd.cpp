@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include "../AdjacencyMatrix.h"
 using namespace std;
+
 /**
  * Parallel implementation of Floyd-Warshall algorithm using Open MPI.
  *
