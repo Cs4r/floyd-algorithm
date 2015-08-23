@@ -3,6 +3,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <stdexcept>
+#include <math.h>
 #include "../AdjacencyMatrix.h"
 using namespace std;
 
@@ -10,13 +11,12 @@ using namespace std;
  * Parallel implementation of Floyd-Warshall algorithm using Open MP.
  *
  * Computation of matrix with shortest paths between all pairs of vertices is done distributing
- * the rows of the adjacency matrix between threads. That's say it is based on a one-dimensional,
- * rowwise domain decomposition of the adjacency matrix.
+ * rows and columns of the adjacency matrix between threads. That's say it is based on a two-dimensional,
+ * blockwise domain decomposition of the adjacency matrix.
  *
  *
  * @author Cs4r
  */
-
 void parallelFloyd(AdjacencyMatrix& adyacencyMatrix);
 
 int main(int argc, char *argv[]) {
@@ -30,15 +30,18 @@ int main(int argc, char *argv[]) {
 	try {
 		unsigned int numberOfVertices;
 		unsigned int numberOfThreads;
+		unsigned int sqrtOfnumberOfThreads;
 		double t1, t2, elapsedTime;
 		AdjacencyMatrix adyacencyMatrix(argv[1]);
 
 		numberOfVertices = adyacencyMatrix.getNumberOfVertices();
 		numberOfThreads = atoi(argv[2]);
+		sqrtOfnumberOfThreads = sqrt(numberOfThreads);
 
-		if (numberOfVertices % numberOfThreads != 0) {
+		if (sqrt(numberOfThreads) != (double) sqrtOfnumberOfThreads
+				|| numberOfVertices % sqrtOfnumberOfThreads != 0) {
 			throw new runtime_error(
-					"Number of vertices must be divisible by number of threads");
+					"Number of vertices must be a multiple of the square root of the number of threads");
 		}
 
 		cout << "Number of vertices: " << numberOfVertices << endl;
@@ -67,24 +70,34 @@ void parallelFloyd(AdjacencyMatrix& adyacencyMatrix) {
 	unsigned int k, i, j;
 	unsigned int lengthFromItoK, lengthFromItoKAndFromKToJ;
 	unsigned int numberOfVertices = adyacencyMatrix.getNumberOfVertices();
+	unsigned int sqrtOfnumberOfThreads = sqrt(omp_get_max_threads());
+	unsigned int blockSize = numberOfVertices / sqrtOfnumberOfThreads;
+	unsigned int initialRow, lastRow;
+	unsigned int initialColumn, lastColumn;
+	unsigned int threadNumber;
 	vector<int> kthRow(numberOfVertices);
+	vector<int> kthColumn(numberOfVertices);
 
-	#pragma omp parallel shared(adyacencyMatrix, numberOfVertices) private(k,i,j, lengthFromItoK, lengthFromItoKAndFromKToJ) firstprivate(kthRow)
+	#pragma omp parallel shared(adyacencyMatrix, numberOfVertices, sqrtOfnumberOfThreads, blockSize) private(k,i,j, lengthFromItoK, lengthFromItoKAndFromKToJ, threadNumber, initialRow, lastRow, initialColumn, lastColumn) firstprivate(kthRow, kthColumn)
 	{
-		for (k = 0; k < numberOfVertices; ++k) {
+		threadNumber = omp_get_thread_num();
 
-			// Synchronization point
+		initialRow = (threadNumber / sqrtOfnumberOfThreads) * blockSize;
+		lastRow = initialRow + blockSize;
 
+		initialColumn = (threadNumber % sqrtOfnumberOfThreads) * blockSize;
+		lastColumn = initialColumn + blockSize;
+
+		for (k = 0; k < numberOfVertices; k++) {
 			#pragma omp barrier
 			for (i = 0; i < numberOfVertices; ++i) {
 				kthRow[i] = adyacencyMatrix.getEdgeLength(k, i);
+				kthColumn[i] = adyacencyMatrix.getEdgeLength(i, k);
 			}
 			#pragma omp barrier
-
-			#pragma omp for
-			for (i = 0; i < numberOfVertices; ++i) {
-				lengthFromItoK = adyacencyMatrix.getEdgeLength(i, k);
-				for (j = 0; j < numberOfVertices; ++j) {
+			for (i = initialRow; i < lastRow; ++i) {
+				lengthFromItoK = kthColumn[i];
+				for (j = initialColumn; j < lastColumn; ++j) {
 					if (i != j && i != k && j != k) {
 						lengthFromItoKAndFromKToJ = lengthFromItoK + kthRow[j];
 						unsigned int minLength = min(lengthFromItoKAndFromKToJ,
